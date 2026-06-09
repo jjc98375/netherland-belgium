@@ -34,7 +34,8 @@
   .stop:first-of-type{border-top:none;margin-top:8px;}
   .pin{flex:none;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:2px;cursor:pointer;}
   .card.be .pin{background:var(--be);}
-  .pin.hotel{background:var(--hotel);}
+  .pin.hotel{background:var(--hotel);border-radius:8px;}
+  .stop.hotelrow{background:#f0fdf4;border-radius:10px;border-top:none;margin-top:8px;padding:10px 10px;}
   .stop .info{flex:1;}
   .stop .info .t{font-weight:600;font-size:15px;}
   .stop .info .time{color:var(--muted);font-size:12px;margin-left:6px;font-weight:400;}
@@ -63,89 +64,90 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+// 숙소 3곳 (index로 각 날짜에 연결)
+const HOTELS = [
+  {n:"Sheraton Amsterdam Airport ✅",ll:[52.3094,4.7613],d:"암스테르담 ① 도착 · 6/24–6/26 (2박). Schiphol Boulevard 101, 스키폴 공항 바로 옆. 6/26 스키폴역서 바로 유로스타. 예약 확정 (Expedia 73468083069278)."},
+  {n:"easyHotel Brussels City Centre ✅",ll:[50.8476,4.3540],d:"브뤼셀 · 6/26–6/30 (4박) · 2인 1실 · $622.58. Grasmarkt 100, 그랑플라스 도보 2분. 당일치기는 브뤼셀 중앙역서 출발. 예약 확정."},
+  {n:"Hotel Casa Amsterdam ✅",ll:[52.3528,4.9280],d:"암스테르담 ② 귀국 전 · 6/30–7/2 (2박) · $340.39. Eerste Ringdijkstraat 4 (동쪽 암스텔 인근) — 교외지만 엄청 멀진 않음, 시내까지 메트로/트램. 예약 확정."},
+];
+
 const DATA = [
-  {id:0,country:"nl",date:"6/24 (수)",title:"암스테르담 도착",
+  {id:0,country:"nl",date:"6/24 (수)",title:"암스테르담 도착",hotel:0,hotelNote:"오늘부터 2박 — 도착 숙소",
    stops:[
-     {n:"스키폴 도착",time:"14:00",ll:[52.3105,4.7683],d:"입국심사·짐. 첫 2박은 공항 옆 Sheraton Amsterdam Airport.",eat:""},
-     {n:"가벼운 산책",time:"오후",ll:[52.3738,4.8910],d:"체크인 후 가볍게 산책. 시차 적응, 일찍 자기.",eat:"🍽️ Café de Klos (아늑한 카페)"},
+     {n:"스키폴 도착",time:"14:00",ll:[52.3105,4.7683],d:"입국심사·짐. 첫 2박은 공항 옆 Sheraton Amsterdam Airport. NS 기차로 시내 약 15분.",eat:""},
+     {n:"안네 프랑크의 집 (외관만)",time:"오후",ll:[52.3752,4.8840],d:"내부는 예약 필수·매진 빠름 → 이번엔 외관만. 밖에서 보고 주변 요르단 지구 산책.",eat:""},
+     {n:"요르단 산책 + 저녁",time:"저녁",ll:[52.3738,4.8855],d:"운하 따라 가볍게. 시차 적응, 일찍 자기.",eat:"🍽️ Café de Klos (아늑한 카페)"},
    ]},
-  {id:1,country:"nl",date:"6/25 (목)",title:"델프트 + 로테르담 당일치기",
+  {id:1,country:"nl",date:"6/25 (목)",title:"델프트 + 로테르담 당일치기",hotel:0,hotelNote:"숙소 (당일치기 후 복귀)",
    stops:[
      {n:"Royal Delft",time:"오전",ll:[52.0033,4.3640],d:"델프트 블루 도자기 박물관 + 공방. 엄마 픽! 평일 9–17시, 마지막 입장 16:30. 오디오투어 포함(영어).",eat:""},
      {n:"델프트 구시가",time:"점심전",ll:[52.0116,4.3571],d:"시간 되면 마르크트 광장 잠깐 둘러보기.",eat:""},
      {n:"마르크트할 (로테르담)",time:"점심",ll:[51.9202,4.4876],d:"기차 15분. 시장 건물 자체가 볼거리 + 점심.",eat:"🍽️ 마르크트할 스탈"},
      {n:"큐브하우스",time:"오후",ll:[51.9203,4.4905],d:"기울어진 노란 집들 + 에라스무스 다리. 복귀는 IC Direct 급행 40분.",eat:"☕ Hopper 커피"},
    ]},
-  {id:2,country:"be",date:"6/26 (금)",title:"브뤼셀로 이동",
+  {id:2,country:"be",date:"6/26 (금)",title:"브뤼셀로 이동",hotel:1,hotelNote:"오늘 브뤼셀 새 숙소로 이동 — 4박",
    stops:[
-     {n:"Eurostar 이동",time:"오전",ll:[52.3091,4.7620],d:"스키폴역 → 브뤼셀 Midi역 직통 약 1시간 52분. 공항 호텔서 짐 끌고 스키폴역서 바로 탑승(센트랄 안 거침).",eat:""},
-     {n:"그랑플라스",time:"오후",ll:[50.8467,4.3525],d:"세계에서 가장 아름다운 광장. 갈레리 생튀베르 아케이드 바로 옆. 호텔(이비스 그랑플라스)서 도보 2분.",eat:"🍽️ Chez Léon (홍합) · 와플"},
+     {n:"Eurostar 이동",time:"11:27→13:06",ll:[52.3091,4.7620],d:"스키폴역 11:27 출발 → 브뤼셀 Midi역 13:06 도착 (Coach 16/Seat 33, 예약 K6TCVR). 역엔 11:07까지, 출발 5분 전 탑승. 공항 호텔서 짐 끌고 스키폴역서 바로(센트랄 안 거침).",eat:""},
+     {n:"그랑플라스",time:"오후",ll:[50.8467,4.3525],d:"세계에서 가장 아름다운 광장. 갈레리 생튀베르 아케이드 바로 옆. 호텔서 도보 2분.",eat:"🍽️ Chez Léon (홍합) · 와플"},
      {n:"그랑플라스 야경",time:"저녁",ll:[50.8467,4.3525],d:"밤에 조명 켜지면 정말 예뻐요.",eat:""},
    ]},
-  {id:3,country:"be",date:"6/27 (토)",title:"앤트워프 당일치기",
+  {id:3,country:"be",date:"6/27 (토)",title:"앤트워프 #1 (여유)",hotel:1,hotelNote:"숙소 (앤트워프 당일치기)",
    stops:[
-     {n:"KMSKA 왕립미술관",time:"오전",ll:[51.2110,4.3900],d:"루벤스·플랑드르 거장. 토요일 10–17시 오픈. 최고 하이라이트.",eat:""},
-     {n:"MAS 박물관",time:"오후",ll:[51.2295,4.4055],d:"강변 박물관. 옥상 파노라마 무료(22시까지). 마지막 입장 16:00.",eat:""},
-     {n:"Port House",time:"지나가며",ll:[51.2310,4.4140],d:"자하 하디드 건축 — 외관만 감상.",eat:"🍽️ 구시가 Grote Markt 점심"},
+     {n:"마이어 판 델 베르흐 미술관",time:"오전",ll:[51.2156,4.4053],d:"브뤼헐 '둘레 흐릿(매드 멕)' 있는 보석 같은 소규모. 화–일 10–17시(마지막 16:45). ⚠️월 휴관이라 오늘 필수.",eat:""},
+     {n:"MoMu (패션 박물관)",time:"오전",ll:[51.2179,4.4008],d:"중심부 Nationalestraat. 소규모. ⚠️월 휴관이라 오늘.",eat:"🍽️ 구도심 Grote Markt 점심"},
+     {n:"MAS 박물관",time:"오후",ll:[51.2295,4.4055],d:"강변 박물관. 옥상 파노라마 무료·예약 불필요, 늦게까지 개방, 노을 좋음. 전시는 마지막 입장 16:00(월 휴관).",eat:""},
+     {n:"Port House",time:"지나가며",ll:[51.2310,4.4140],d:"자하 하디드 건축 — 외관만 사진. MAS 근처.",eat:""},
    ]},
-  {id:4,country:"be",date:"6/28 (일)",title:"브뤼셀 종일",
+  {id:4,country:"be",date:"6/28 (일)",title:"브뤼셀 종일",hotel:1,hotelNote:"숙소",
    stops:[
-     {n:"마그리트 미술관",time:"11:00 오픈",ll:[50.8418,4.3585],d:"엄마 픽. 일요일 11–18시 오픈 (월 휴관이라 일요일이 딱 좋음).",eat:""},
+     {n:"마그리트 미술관",time:"11:00 오픈",ll:[50.8418,4.3585],d:"엄마 픽. 일요일 11–18시 (월 휴관이라 일요일이 딱).",eat:""},
      {n:"사블롱 광장",time:"점심",ll:[50.8410,4.3560],d:"점심 + 노트르담 뒤 사블롱 성당, 쁘띠 사블롱 공원.",eat:"☕ Wittamer (유명 파티스리)"},
      {n:"오줌싸개 동상",time:"오후",ll:[50.8450,4.3499],d:"브뤼셀의 작은 명물.",eat:""},
      {n:"Rue des Bouchers",time:"저녁",ll:[50.8485,4.3535],d:"음식거리 — 분위기 좋은 저녁.",eat:"🍽️ 해산물·벨기에 가정식"},
    ]},
-  {id:5,country:"be",date:"6/29 (월)",title:"겐트 당일치기 (또는 앤트워프 더 보기)",
+  {id:5,country:"be",date:"6/29 (월)",title:"앤트워프 #2 — KMSKA + 대성당",hotel:1,hotelNote:"숙소 (앤트워프 당일치기)",
    stops:[
-     {n:"그라벤스텐 성",time:"오전",ll:[51.0573,3.7200],d:"IC 직통 약 30분(브뤼헤보다 가까움). 중세 성, 월요일 열음.",eat:""},
-     {n:"성 바프 대성당 & 운하 거리",time:"오전",ll:[51.0536,3.7274],d:"그라슬레이·코렌레이 운하 거리, 종루. ⚠️ 헨트 제단화는 복원 중(~2027) — 일부만 관람.",eat:"🍽️ 운하 옆 점심"},
-     {n:"대안: 앤트워프 다시",time:"오후",ll:[51.2172,4.4210],d:"6/27에 못 본 곳 더 보기 — 성모 대성당·MAS 옥상·구도심 산책. ⚠️ 앤트워프 미술관 다수 월요 휴관.",eat:""},
+     {n:"KMSKA 왕립미술관",time:"오전",ll:[51.2110,4.3897],d:"루벤스·플랑드르 거장. 제일 크고 엄마 메인. 월–금 10–17시(엄마도 '휴무없음'이라 적음). 현장 구매 OK, 원하면 전날 온라인 예약. 약 2시간 반.",eat:""},
+     {n:"노트르담 대성당",time:"오후",ll:[51.2203,4.4011],d:"루벤스 4대 걸작('십자가를 세움'·'십자가에서 내림' 등). 루벤스의 집 휴관이라 루벤스는 여기서. €12(60세+ €10). 월–금 10–17시.",eat:""},
+     {n:"구도심 · Grote Markt",time:"오후",ll:[51.2214,4.3997],d:"시간 남으면 한 바퀴, 운하 옆 커피. 오후 늦게 브뤼셀 복귀.",eat:"🍽️ Grote Markt 감자튀김·홍합"},
    ]},
-  {id:6,country:"nl",date:"6/30 (화)",title:"암스테르담 복귀 (가볍게)",
+  {id:6,country:"nl",date:"6/30 (화)",title:"암스테르담 복귀 (가볍게)",hotel:2,hotelNote:"오늘 암스테르담 새 숙소로 이동 — 2박",
    stops:[
-     {n:"Eurostar 이동",time:"오전",ll:[50.8358,4.3360],d:"브뤼셀 → 암스테르담 약 2시간. 이후 2박은 Hotel Omega(Oud-Zuid).",eat:""},
-     {n:"🍺 하이네켄 체험관",time:"오후",ll:[52.3580,4.8912],d:"양조장 투어 + 맥주 2잔, 약 1.5시간. 온라인 시간지정 예약 필수. 화요일이라 한산함.",eat:""},
+     {n:"Eurostar 이동",time:"09:53→11:50",ll:[50.8358,4.3360],d:"브뤼셀 Midi역 09:53 출발 → 암스테르담 Centraal 11:50 도착 (Coach 17/Seat 35, 예약 WMYPNM). 역엔 09:33까지. 출발 전 체크아웃.",eat:""},
+     {n:"🍺 하이네켄 체험관",time:"14:00 입장",ll:[52.3577,4.8911],d:"예약 완료 (성인 2명·€49.90, 13:45까지 도착). 양조장 투어 + 맥주 2잔, 약 1.5시간. 센트랄 도착 후 짐 맡기고 점심 후 이동.",eat:""},
      {n:"운하 보트투어",time:"오후",ll:[52.3730,4.8920],d:"1시간, 앉아서 도시 첫인상 보기 — 여독 풀기 좋음.",eat:""},
-     {n:"안네 프랑크의 집",time:"오후",ll:[52.3752,4.8839],d:"방문 시 tickets.annefrank.org 공식 사이트서 미리 예약(6주 전 룰, 매진 빠름). 현장 판매 없음. 아니면 외관+요르단 산책.",eat:"🍽️ Moeders (네덜란드 가정식, 예약)"},
+     {n:"안네 프랑크의 집 근처",time:"오후",ll:[52.3752,4.8840],d:"6/24에 외관 봤으면 가볍게 패스, 요르단 산책으로.",eat:"🍽️ Moeders (네덜란드 가정식, 예약)"},
    ]},
-  {id:7,country:"nl",date:"7/1 (수) ⭐",title:"암스테르담 종일",
+  {id:7,country:"nl",date:"7/1 (수) ⭐",title:"암스테르담 종일",hotel:2,hotelNote:"숙소 (동쪽 · 미술관까지 메트로/트램 ~25분)",
    stops:[
-     {n:"반고흐 미술관",time:"오전",ll:[52.3584,4.8811],d:"⭐ 엄마 픽! 매일 9–18시(금 21시), €25. 시간지정 예약 필수 — 여름엔 5–6주 전 매진이라 지금 예약!",eat:""},
-     {n:"점심",time:"점심",ll:[52.3650,4.8830],d:"미술관 광장 근처 카페에서 가볍게.",eat:""},
-     {n:"라익스 미술관",time:"오후",ll:[52.3600,4.8852],d:"베르메르·렘브란트 야경·델프트 도자기 갤러리(엄마가 좋아하는 델프트와 연결). €23.50, 시간지정. 반고흐서 도보 5분.",eat:""},
+     {n:"라익스 미술관",time:"10:00–11:00 입장",ll:[52.3600,4.8852],d:"예약 완료 (성인 2명·€50, 주문 27051034). 이 시간대 입장하면 이후 체류 자유. 베르메르·렘브란트 야경·델프트 도자기 갤러리(엄마가 좋아하는 델프트와 연결).",eat:""},
+     {n:"점심",time:"점심",ll:[52.3625,4.8830],d:"미술관 광장 근처 카페에서 가볍게.",eat:""},
+     {n:"반고흐 미술관",time:"14:00 입장",ll:[52.3584,4.8811],d:"예약 완료 (성인 2명·€25, 현장판매 없음). 엄마 픽! 라익스서 도보 5분.",eat:""},
      {n:"요르단 지구",time:"오후",ll:[52.3740,4.8810],d:"예쁜 골목 산책 + 카페. 날 좋으면 폰델파크도.",eat:"🍰 Winkel 43 (애플파이)"},
    ]},
-  {id:8,country:"nl",date:"7/2 (목)",title:"귀국",
+  {id:8,country:"nl",date:"7/2 (목)",title:"귀국",hotel:2,hotelNote:"체크아웃 후 공항으로",
    stops:[
-     {n:"공항으로",time:"오전",ll:[52.3105,4.7683],d:"호텔 아침 → 기차로 스키폴 약 15분. 12시 도착, 14:55 비행기(토론토 경유).",eat:""},
+     {n:"공항으로",time:"오전",ll:[52.3105,4.7683],d:"호텔 아침 → 10–11시 체크아웃 → 기차로 스키폴 약 15분. 12시 도착, 14:55 비행기(토론토 경유).",eat:""},
    ]},
 ];
 
 const BOOK = {
-  2:{type:"book",txt:"🎟️ Eurostar 스키폴→브뤼셀 미리 예약! (€29~ vs 당일 €100+). 표는 'Schiphol → Brussels'로 끊기."},
-  3:{type:"warn",txt:"⚠️ 루벤스의 집(Rubenshuis)은 공사로 휴관 중 — 이번엔 패스. 미술관 2곳까지만, 무리하지 말기."},
-  5:{type:"tip",txt:"💛 6/29 겐트 — 브뤼헤보다 가깝고(약 30분) 성·성당·운하 위주라 월요 휴관 영향 적음. 엄마 피곤하면 앤트워프 다시 가거나 브뤼셀서 쉬어도 OK!"},
-  6:{type:"book",txt:"🎟️ Eurostar 브뤼셀→암 미리 예약! / 안네 프랑크 방문 시 tickets.annefrank.org 지금 예약."},
-  7:{type:"book",txt:"🎟️ 반고흐 미술관(엄마 픽) — tickets.vangoghmuseum.com, 여름 5–6주 전 매진이라 지금 예약!"},
+  2:{type:"book",txt:"🎟️ Eurostar 예약 완료 — 스키폴 11:27 → 브뤼셀 Midi 13:06 (Coach 16/Seat 33, K6TCVR)."},
+  3:{type:"tip",txt:"💡 오늘은 월요일에 닫는 곳(마이어 판 델 베르흐·MoMu·MAS) 위주. KMSKA·노트르담 대성당은 6/29(월)에 여유롭게 봄. 빡세면 MoMu·Port House는 빼도 OK."},
+  5:{type:"tip",txt:"💡 KMSKA·대성당 둘 다 월요일 개관이라 이날로. KMSKA는 현장 구매 OK(월요일이라 한산), 원하면 전날 밤 온라인으로 시간대만 잡아두면 끝. 엄마 피곤하면 KMSKA만 봐도 됨."},
+  6:{type:"book",txt:"🎟️ Eurostar 예약 완료 — 브뤼셀 Midi 09:53 → 암 Centraal 11:50 (Coach 17/Seat 35, WMYPNM). 🍺 하이네켄 14:00 예약 완료."},
+  7:{type:"book",txt:"🎟️ 라익스 10:00–11:00 · 반고흐 14:00 둘 다 예약 완료! 오전 라익스 → 점심 → 오후 반고흐 순서."},
 };
 
-// 전체보기용 호텔
-const HOTELS = [
-  {n:"Sheraton Amsterdam Airport ⏳변경 중",ll:[52.3094,4.7613],d:"암스테르담 ① 도착 · 6/24–6/26 (2박). Schiphol Boulevard 101, 스키폴 공항 바로 옆. 6/26 스키폴역서 바로 유로스타. ⏳변경 중(pending) · 기존: Residence Inn by Marriott Schiphol."},
-  {n:"ibis Brussels off Grand'Place ⏳변경 중",ll:[50.8476,4.3530],d:"브뤼셀 · 6/26–6/30 (4박). Grasmarkt 100, 그랑플라스 도보 2분. ⏳변경 중(pending) · 기존: Warwick Grand-Place (예약번호 73464374475623)."},
-  {n:"Hotel Omega",ll:[52.3556,4.8773],d:"암스테르담 ② 귀국 전 · 6/30–7/2 (2박). Jacob Obrechtstraat 33, Oud-Zuid. 라익스·반고흐 도보권."},
-];
-
-// 전체보기용 기차역 + 노선
+// 전체보기용 기차역
 const STATIONS = [
   {n:"스키폴 공항 / 역",ll:[52.3091,4.7620],c:"nl",d:"공항+기차역 한 건물. 도착(6/24)·귀국(7/2). ⭐ 6/26 유로스타도 여기서 바로 탑승."},
-  {n:"암스테르담 중앙역",ll:[52.3791,4.9003],c:"nl",d:"국내선 NS 허브 — 로테르담 당일치기 등."},
+  {n:"암스테르담 중앙역",ll:[52.3791,4.9003],c:"nl",d:"국내선 NS 허브 — 델프트·로테르담 당일치기 등."},
   {n:"델프트역",ll:[52.0061,4.3565],c:"nl",d:"6/25 Royal Delft. 암스테르담서 완행 IC 약 1시간."},
   {n:"로테르담 중앙역",ll:[51.9249,4.4699],c:"nl",d:"6/25 마르크트할·큐브하우스. 델프트서 12분. 돌아갈 땐 급행(IC Direct) 40분."},
   {n:"브뤼셀-자위트/미디역",ll:[50.8358,4.3360],c:"be",d:"⭐ 유로스타 국제역 (6/26 도착·6/30 출발). 예매 때 'Brussels Midi/Zuid' 고르기!"},
-  {n:"브뤼셀 중앙역",ll:[50.8454,4.3571],c:"be",d:"호텔 근처. 국내선 당일치기(앤트워프·겐트)는 여기서 출발."},
-  {n:"앤트워프 중앙역",ll:[51.2172,4.4210],c:"be",d:"6/27. 브뤼셀서 IC 약 45분. 역 건물 자체가 명소."},
-  {n:"겐트역 (Gent-Sint-Pieters)",ll:[51.0357,3.7106],c:"be",d:"6/29. 브뤼셀서 IC 직행 약 30분."},
+  {n:"브뤼셀 중앙역",ll:[50.8454,4.3571],c:"be",d:"호텔 근처. 국내선 당일치기(앤트워프)는 여기서 출발."},
+  {n:"앤트워프 중앙역",ll:[51.2172,4.4210],c:"be",d:"6/27·6/29 앤트워프 이틀. 브뤼셀서 IC 약 45분. 역 건물 자체가 명소."},
 ];
 
 const map = L.map('map',{scrollWheelZoom:true}).setView([51.5,4.4],7);
@@ -164,17 +166,16 @@ function trainIcon(country){
   return L.divIcon({className:'',html:`<div style="width:30px;height:30px;border-radius:8px;background:${color};color:#fff;font-size:15px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)">🚆</div>`,iconSize:[30,30],iconAnchor:[15,15],popupAnchor:[0,-15]});
 }
 function hotelIcon(){
-  return L.divIcon({className:'',html:`<div style="width:30px;height:30px;border-radius:8px;background:#16a34a;color:#fff;font-size:15px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)">🏨</div>`,iconSize:[30,30],iconAnchor:[15,15],popupAnchor:[0,-15]});
+  return L.divIcon({className:'',html:`<div style="width:32px;height:32px;border-radius:8px;background:#16a34a;color:#fff;font-size:16px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.45)">🏨</div>`,iconSize:[32,32],iconAnchor:[16,16],popupAnchor:[0,-16]});
 }
 function showOverview(){
   clearMarkers();clearRoutes();
   const A=[52.3791,4.9003],SC=[52.3091,4.7620],DL=[52.0061,4.3565],RO=[51.9249,4.4699],
-        BM=[50.8358,4.3360],BC=[50.8454,4.3571],AN=[51.2172,4.4210],GE=[51.0357,3.7106];
+        BM=[50.8358,4.3360],BC=[50.8454,4.3571],AN=[51.2172,4.4210];
   const routes=[
     {pts:[A,DL,RO],color:'#ea580c',dash:null},
     {pts:[SC,BM],color:'#7c3aed',dash:'8,8'},
     {pts:[BC,AN],color:'#1d4ed8',dash:null},
-    {pts:[BC,GE],color:'#1d4ed8',dash:null},
   ];
   routes.forEach(r=>{const l=L.polyline(r.pts,{color:r.color,weight:3.5,opacity:.55,dashArray:r.dash}).addTo(map);routeLines.push(l);});
   const all=[];
@@ -190,7 +191,7 @@ function showOverview(){
   STATIONS.forEach((s,i)=>{
     html+=`<div class="stop"><div class="pin train" data-s="${i}" style="background:${s.c==='be'?'#1d4ed8':'#ea580c'}">🚆</div><div class="info"><div class="t">${s.n}</div><div class="d">${s.d}</div></div></div>`;
   });
-  html+=`<div class="tip book">⭐ 헷갈리지 마! <b>유로스타(국제선)</b>는 6/26 <b>스키폴역</b>서 타고 브뤼셀 <b>Midi역</b> 도착. <b>국내선 당일치기(앤트워프·겐트)</b>는 <b>브뤼셀 중앙역</b>서 출발.</div>`;
+  html+=`<div class="tip book">⭐ 헷갈리지 마! <b>유로스타(국제선)</b>는 6/26 <b>스키폴역</b>서 타고 브뤼셀 <b>Midi역</b> 도착. <b>국내선 당일치기(앤트워프)</b>는 <b>브뤼셀 중앙역</b>서 출발.</div>`;
   html+=`<p class="note" style="margin-top:10px">🟢 호텔 · 🟠 네덜란드 · 🔵 벨기에 · 보라색 점선 = 유로스타(국제선)</p></div>`;
   p.innerHTML=html;p.scrollTop=0;
   const stationMarkers=STATIONS.map((s,i)=>markers[i]);
@@ -201,22 +202,41 @@ function showOverview(){
 function showDay(d){
   clearMarkers();clearRoutes();
   const latlngs=[];
+  const poiLL=[];
   d.stops.forEach((s,i)=>{
     const m=L.marker(s.ll,{icon:makeIcon(i+1,d.country)}).addTo(map);
     m.bindPopup(`<b>${i+1}. ${s.n}</b><br>${s.d}${s.eat?'<br>'+s.eat:''}`);
-    markers.push(m);latlngs.push(s.ll);
+    markers.push(m);latlngs.push(s.ll);poiLL.push(s.ll);
   });
+  // 그날 동선(스탑 순서대로) 연결선
+  if(poiLL.length>1){
+    const rl=L.polyline(poiLL,{color:d.country==='be'?'#1d4ed8':'#ea580c',weight:3,opacity:.45,dashArray:'5,7'}).addTo(map);
+    routeLines.push(rl);
+  }
+  // 그날 숙소 마커
+  const h=(d.hotel!=null)?HOTELS[d.hotel]:null;
+  let hotelMarker=null;
+  if(h){
+    hotelMarker=L.marker(h.ll,{icon:hotelIcon()}).addTo(map);
+    hotelMarker.bindPopup(`<b>🏨 ${h.n}</b><br><i>${d.hotelNote||'오늘 숙소'}</i><br>${h.d}`);
+    markers.push(hotelMarker);latlngs.push(h.ll);
+  }
   if(latlngs.length>1){map.fitBounds(latlngs,{padding:[55,55],maxZoom:14});}
-  else{map.setView(latlngs[0],12);}
+  else{map.setView(latlngs[0],13);}
   const p=document.getElementById('panel');
   let html=`<div class="card ${d.country==='be'?'be':''}"><div class="date">${d.date}</div><h2>${d.title}</h2>`;
+  if(h){
+    html+=`<div class="stop hotelrow"><div class="pin hotel" data-hotel="1">🏨</div><div class="info"><div class="t">${h.n.replace(' ⏳변경 중','')}<span class="time">${d.hotelNote||'오늘 숙소'}</span></div><div class="d">${h.d}</div></div></div>`;
+  }
   d.stops.forEach((s,i)=>{
     html+=`<div class="stop"><div class="pin" data-i="${i}">${i+1}</div><div class="info"><div class="t">${s.n}<span class="time">${s.time}</span></div><div class="d">${s.d}</div>${s.eat?`<div class="eat">${s.eat}</div>`:''}</div></div>`;
   });
   if(BOOK[d.id]) html+=`<div class="tip ${BOOK[d.id].type}">${BOOK[d.id].txt}</div>`;
-  html+=`</div><p class="note">핀을 누르면 지도에서 위치를 볼 수 있어요 · 🟠 네덜란드 · 🔵 벨기에</p>`;
+  html+=`</div><p class="note">핀을 누르면 지도에서 위치를 볼 수 있어요 · 🟢 숙소 · 🟠 네덜란드 · 🔵 벨기에 · 점선 = 그날 동선</p>`;
   p.innerHTML=html;p.scrollTop=0;
-  p.querySelectorAll('.pin').forEach(el=>{el.addEventListener('click',()=>{const i=+el.dataset.i;markers[i].openPopup();map.panTo(d.stops[i].ll);});});
+  p.querySelectorAll('.pin[data-i]').forEach(el=>{el.addEventListener('click',()=>{const i=+el.dataset.i;markers[i].openPopup();map.panTo(d.stops[i].ll);});});
+  const hp=p.querySelector('.pin[data-hotel]');
+  if(hp&&hotelMarker){hp.addEventListener('click',()=>{hotelMarker.openPopup();map.panTo(h.ll);});}
 }
 const bar=document.getElementById('daybtns');
 const ob=document.createElement('button');
