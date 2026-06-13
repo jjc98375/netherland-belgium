@@ -4,6 +4,13 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>우리 여행 지도 · 네덜란드 & 벨기에</title>
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#1a73e8" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<link rel="icon" type="image/png" href="icon-192.png" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
   :root{
@@ -279,6 +286,9 @@ buildSheet();
 listBtn.onclick=()=>sheet.classList.toggle('open');
 document.querySelector('#sheet .grab').onclick=()=>sheet.classList.remove('open');
 map.on('click',()=>sheet.classList.remove('open'));
+/* PWA 서비스워커 등록 (앱 설치 가능하게) */
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});}
 </script>
 </body>
 </html>
