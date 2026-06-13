@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>우리 여행 지도 · 네덜란드 & 벨기에</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  :root{
+    --sight:#d93025; --museum:#7b1fa2; --food:#e8710a; --hotel:#188038; --transit:#1a73e8;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;}
+  #map{position:fixed;inset:0;z-index:1;}
+  /* ── 상단 검색바 (구글맵 스타일) ── */
+  #topbar{position:fixed;top:10px;left:10px;right:10px;z-index:1000;max-width:480px;}
+  #searchbox{display:flex;align-items:center;background:#fff;border-radius:24px;
+    box-shadow:0 2px 10px rgba(0,0,0,.22);padding:0 8px 0 16px;height:48px;}
+  #searchbox input{flex:1;border:none;outline:none;font-size:15.5px;background:transparent;color:#222;}
+  #searchbox .ic{font-size:18px;color:#5f6368;margin-right:10px;}
+  #clearBtn{border:none;background:none;font-size:16px;color:#5f6368;cursor:pointer;
+    width:36px;height:36px;border-radius:50%;display:none;}
+  #suggest{background:#fff;border-radius:14px;box-shadow:0 4px 14px rgba(0,0,0,.2);
+    margin-top:6px;max-height:46vh;overflow-y:auto;display:none;}
+  .sg{display:flex;gap:11px;align-items:center;padding:11px 14px;cursor:pointer;border-top:1px solid #f1f3f4;}
+  .sg:first-child{border-top:none;}
+  .sg:hover,.sg:active{background:#f8f9fa;}
+  .sg .dot{flex:none;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;
+    justify-content:center;font-size:14px;color:#fff;}
+  .sg .nm{font-size:14.5px;font-weight:600;color:#202124;}
+  .sg .ct{font-size:12px;color:#80868b;}
+  /* ── 필터 칩 ── */
+  #chips{position:fixed;top:66px;left:0;right:0;z-index:999;display:flex;gap:8px;
+    padding:6px 10px;overflow-x:auto;scrollbar-width:none;}
+  #chips::-webkit-scrollbar{display:none;}
+  .chip{flex:none;display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #dadce0;
+    border-radius:18px;padding:7px 14px;font-size:13.5px;font-weight:600;color:#3c4043;cursor:pointer;
+    box-shadow:0 1px 3px rgba(0,0,0,.12);}
+  .chip .cdot{width:9px;height:9px;border-radius:50%;}
+  .chip.on{color:#fff;border-color:transparent;}
+  /* ── 도시 점프 ── */
+  #cities{position:fixed;bottom:88px;left:10px;z-index:999;display:flex;flex-direction:column;gap:6px;}
+  .cityjump{background:#fff;border:none;border-radius:10px;padding:8px 12px;font-size:12.5px;
+    font-weight:700;color:#3c4043;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.25);text-align:left;}
+  .cityjump small{display:block;font-weight:400;color:#80868b;font-size:10.5px;}
+  /* ── 목록 버튼/시트 ── */
+  #listBtn{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:1000;
+    background:#1a73e8;color:#fff;border:none;border-radius:24px;padding:13px 24px;
+    font-size:14.5px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.3);cursor:pointer;}
+  #sheet{position:fixed;left:0;right:0;bottom:0;z-index:1001;background:#fff;
+    border-radius:18px 18px 0 0;box-shadow:0 -4px 24px rgba(0,0,0,.3);max-height:72vh;
+    transform:translateY(105%);transition:transform .28s ease;display:flex;flex-direction:column;}
+  #sheet.open{transform:translateY(0);}
+  #sheet .grab{width:40px;height:4px;border-radius:2px;background:#dadce0;margin:10px auto 4px;}
+  #sheet h2{margin:4px 18px 8px;font-size:17px;color:#202124;}
+  #sheetList{overflow-y:auto;padding:0 8px 24px;-webkit-overflow-scrolling:touch;}
+  .cityhead{font-size:13px;font-weight:800;color:#1a73e8;padding:14px 12px 4px;}
+  .li{display:flex;gap:12px;align-items:flex-start;padding:11px 12px;border-radius:12px;cursor:pointer;}
+  .li:active{background:#f1f3f4;}
+  .li .dot{flex:none;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;
+    justify-content:center;font-size:16px;color:#fff;margin-top:2px;}
+  .li .nm{font-size:15px;font-weight:700;color:#202124;}
+  .li .ds{font-size:12.5px;color:#5f6368;line-height:1.45;margin-top:2px;}
+  /* ── 팝업 (구글맵 카드 스타일) ── */
+  .leaflet-popup-content-wrapper{border-radius:14px;box-shadow:0 4px 18px rgba(0,0,0,.25);}
+  .leaflet-popup-content{margin:14px 16px 12px;min-width:230px;}
+  .pp .badge{display:inline-block;font-size:11px;font-weight:700;color:#fff;border-radius:6px;padding:2.5px 8px;}
+  .pp h3{margin:6px 0 3px;font-size:16.5px;color:#202124;}
+  .pp .memo{font-size:13px;color:#5f6368;line-height:1.5;margin-bottom:10px;}
+  .pp .btns{display:flex;gap:8px;}
+  .pp a{flex:1;text-align:center;text-decoration:none;font-size:13px;font-weight:700;
+    border-radius:18px;padding:9px 0;}
+  .pp a.g{background:#1a73e8;color:#fff;}
+  .pp a.d{background:#e8f0fe;color:#1a73e8;}
+  /* 마커 핀 */
+  .pin{position:relative;width:30px;height:30px;border-radius:50% 50% 50% 0;
+    transform:rotate(-45deg);border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4);
+    display:flex;align-items:center;justify-content:center;}
+  .pin span{transform:rotate(45deg);font-size:13px;}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="topbar">
+  <div id="searchbox">
+    <span class="ic">🔍</span>
+    <input id="q" placeholder="장소 검색 (예: 반고흐, 와플...)" autocomplete="off"/>
+    <button id="clearBtn">✕</button>
+  </div>
+  <div id="suggest"></div>
+</div>
+<div id="chips"></div>
+<div id="cities"></div>
+<button id="listBtn">☰ 전체 목록 (52)</button>
+<div id="sheet"><div class="grab"></div><h2>📍 전체 장소</h2><div id="sheetList"></div></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ───────── 데이터: 분류, 이름, 위도, 경도, 메모, 구글검색어 ───────── */
+const CAT={
+ 명소:{c:'#d93025',i:'📷'}, 박물관:{c:'#7b1fa2',i:'🖼️'}, 맛집:{c:'#e8710a',i:'🍽️'},
+ 호텔:{c:'#188038',i:'🏨'}, 교통:{c:'#1a73e8',i:'🚆'}};
+const P=[
+ // ── 암스테르담 ──
+ ['교통','스키폴 공항',52.3105,4.7683,'6/24 14:00 도착 · 7/2 14:55 출발 (토론토 경유)','Schiphol Airport'],
+ ['호텔','Sheraton Amsterdam Airport',52.3094,4.7626,'6/24–6/26 (2박) 예약완료 · 공항 바로 옆','Sheraton Amsterdam Airport Hotel Schiphol'],
+ ['호텔','Hotel Casa Amsterdam',52.3536,4.9163,'6/30–7/2 (2박) 예약완료 · 암스텔 인근','Hotel Casa Amsterdam Eerste Ringdijkstraat 4'],
+ ['명소','안네 프랑크의 집',52.3752,4.8840,'6/24 외관만 보기 (내부 예약 안 함)','Anne Frank House Amsterdam'],
+ ['명소','요르단 지구',52.3739,4.8809,'6/24 저녁 · 7/1 오후 산책','Jordaan Amsterdam'],
+ ['박물관','라익스 미술관',52.3600,4.8852,'7/1 10:00 입장 예약완료 (2명 €50) · 야경 + 델프트 도자기','Rijksmuseum Amsterdam'],
+ ['박물관','반고흐 미술관',52.3584,4.8811,'7/1 14:00 입장 예약완료 (2명 €25) · 엄마 픽','Van Gogh Museum Amsterdam'],
+ ['명소','하이네켄 체험관',52.3578,4.8915,'6/30 14:00 예약완료 (2명 €49.90)','Heineken Experience Amsterdam'],
+ ['명소','폰델파크',52.3580,4.8686,'7/1 날 좋으면 산책','Vondelpark Amsterdam'],
+ ['교통','암스테르담 중앙역',52.3791,4.9003,'국내선 NS 허브 · 6/30 유로스타 도착역','Amsterdam Centraal Station'],
+ ['맛집','Café de Klos',52.3645,4.8847,'립 맛집 · 6/24 저녁 후보','Cafe de Klos Kerkstraat 41 Amsterdam'],
+ ['맛집','Moeders',52.3735,4.8758,'네덜란드 가정식 · 6/30 저녁 (예약 필요)','Moeders Rozengracht 251 Amsterdam'],
+ ['맛집','Winkel 43',52.3796,4.8866,'유명 애플파이 · 7/1 요르단 산책 때','Winkel 43 Noordermarkt Amsterdam'],
+ ['맛집','The Pancake Bakery',52.3759,4.8836,'1539년 건물 더치 팬케이크 · 안네 프랑크 도보 5분','The Pancake Bakery Prinsengracht 191 Amsterdam'],
+ ['맛집','Vleminckx 감자튀김',52.3686,4.8909,'1957년부터 줄 서는 감자튀김 · Oorlog 도전!','Vleminckx Sausmeesters Voetboogstraat Amsterdam'],
+ ['맛집','The Seafood Bar',52.3617,4.8794,'해산물 플래터 · 미술관 근처 7/1 저녁 후보','The Seafood Bar Van Baerlestraat Amsterdam'],
+ ['맛집','Van Wonderen 스트룹와플',52.3677,4.8907,'인생샷 스트룹와플','Van Wonderen Stroopwafels Kalverstraat Amsterdam'],
+ ['맛집','FEBO (자판기 크로켓)',52.3650,4.8880,'자판기 크로켓 체험 · 지점 많음','FEBO Leidsestraat Amsterdam'],
+ // ── 델프트 ──
+ ['명소','Royal Delft 도자기',51.9928,4.3640,'6/25 오전 · 엄마 픽 · 마지막 입장 16:30','Royal Delft Rotterdamseweg 196 Delft'],
+ ['명소','델프트 마르크트 광장',52.0116,4.3608,'6/25 구시가 + 신교회 탑','Markt Delft'],
+ ['맛집','Stads-Koffyhuis',52.0107,4.3553,'운하 보트 테라스 팬케이크','Stads-Koffyhuis Oude Delft 133 Delft'],
+ ['맛집','Kek',52.0119,4.3597,'감성 브런치 카페','Kek Voldersgracht 27 Delft'],
+ // ── 로테르담 ──
+ ['명소','마르크트할',51.9200,4.4870,'6/25 점심 · 시장 건물 자체가 볼거리','Markthal Rotterdam'],
+ ['명소','큐브하우스',51.9201,4.4905,'6/25 오후 · 기울어진 노란 집들','Cube Houses Rotterdam'],
+ ['명소','에라스무스 다리',51.9090,4.4870,'6/25 지나가며','Erasmusbrug Rotterdam'],
+ ['맛집','Fenix Food Factory',51.8999,4.4847,'항구 창고 푸드홀 · 로컬 맥주+치즈','Fenix Food Factory Rotterdam'],
+ ['맛집','Hopper Coffee',51.9148,4.4779,'로스터리 카페 · 일정표 그 집','Hopper Coffee Schiedamse Vest Rotterdam'],
+ // ── 브뤼셀 ──
+ ['명소','그랑플라스',50.8467,4.3525,'6/26 오후 + 야경 · 호텔 도보 2분','Grand Place Brussels'],
+ ['명소','갈르리 생튀베르',50.8479,4.3551,'6/26 예쁜 아케이드','Galeries Royales Saint-Hubert Brussels'],
+ ['호텔','easyHotel Brussels',50.8464,4.3545,'6/26–6/30 (4박) 예약완료 · 체크인 15:00','easyHotel Brussels City Centre Grasmarkt 100'],
+ ['박물관','마그리트 미술관',50.8420,4.3596,'6/28 11:00 · 엄마 픽 · 일요일 영업','Magritte Museum Brussels'],
+ ['명소','그랑 사블롱 광장',50.8400,4.3565,'6/28 점심 + 성당 + 공원','Place du Grand Sablon Brussels'],
+ ['명소','오줌싸개 동상',50.8450,4.3499,'6/28 오후 · 브뤼셀의 작은 명물','Manneken Pis Brussels'],
+ ['명소','Rue des Bouchers',50.8482,4.3540,'6/28 저녁 음식거리','Rue des Bouchers Brussels'],
+ ['교통','브뤼셀 Midi역',50.8354,4.3367,'유로스타역 · 6/26 도착 · 6/30 09:53 출발','Brussels Midi Station'],
+ ['맛집','Chez Léon',50.8480,4.3537,'홍합 물프리트 · 6/26 저녁 후보','Chez Leon Rue des Bouchers Brussels'],
+ ['맛집','Wittamer',50.8399,4.3568,'유명 파티스리 · 6/28 사블롱','Wittamer Place du Grand Sablon Brussels'],
+ ['맛집','Maison Dandoy',50.8473,4.3513,'1829년 와플 명가 · 그랑플라스 도보 2분','Maison Dandoy Rue au Beurre Brussels'],
+ ['맛집','Fritland',50.8474,4.3500,'1987년부터 감자튀김 · 야경 후 야식 가능','Fritland Brussels'],
+ ['맛집','Noordzee 해산물 노점',50.8501,4.3460,'서서 먹는 해산물 바 · 새우 크로켓 + 화이트와인','Noordzee Mer du Nord Brussels'],
+ ['맛집','Pierre Marcolini',50.8395,4.3562,'사블롱 초콜릿 명가 · 선물용 최고','Pierre Marcolini Grand Sablon Brussels'],
+ // ── 앤트워프 ──
+ ['박물관','마이어 판 델 베르흐',51.2150,4.4030,'6/27 오전 · 브뤼헐 둘레 흐릿 · 월 휴관이라 토요일에!','Museum Mayer van den Bergh Antwerp'],
+ ['박물관','MoMu 패션 박물관',51.2152,4.3984,'6/27 오전 · 월 휴관','MoMu Antwerp'],
+ ['명소','그로테 마르트',51.2213,4.3997,'6/27·6/29 점심 + 산책','Grote Markt Antwerp'],
+ ['박물관','MAS 박물관',51.2289,4.4046,'6/27 오후 · 옥상 파노라마 무료 · 노을 맛집','MAS Museum aan de Stroom Antwerp'],
+ ['명소','Port House',51.2336,4.4117,'6/27 외관만 (자하 하디드)','Port House Antwerp'],
+ ['박물관','KMSKA 왕립미술관',51.2117,4.3937,'6/29 오전 · 엄마 메인 · 시간지정 예약','KMSKA Antwerp'],
+ ['명소','노트르담 대성당',51.2204,4.4012,'6/29 오후 · 루벤스 4대 걸작 · €12 (60세+ €10)','Cathedral of Our Lady Antwerp'],
+ ['교통','앤트워프 중앙역',51.2172,4.4211,'역 건물 자체가 명소!','Antwerpen-Centraal Station'],
+ ['맛집','Frites Atelier',51.2160,4.4040,'미슐랭 셰프 감자튀김 · 점심 후보','Frites Atelier Korte Gasthuisstraat Antwerp'],
+ ['맛집','The Chocolate Line',51.2186,4.4068,'메이르 궁전 초콜릿 공방','The Chocolate Line Meir 50 Antwerp'],
+ ['맛집','Goossens 베이커리',51.2161,4.4036,'1884년 빵집 · Frites Atelier 맞은편','Bakkerij Goossens Korte Gasthuisstraat Antwerp']
+];
+const CITY_OF=p=>{const la=p[2];
+  if(la>52.25)return '암스테르담'; if(la>51.95)return '델프트';
+  if(la>51.85)return '로테르담'; if(la>51.15)return '앤트워프'; return '브뤼셀';};
+const CITY_VIEW={
+ '암스테르담':[52.366,4.885,13],'델프트':[52.005,4.360,13.5],'로테르담':[51.916,4.485,13.5],
+ '앤트워프':[51.219,4.404,13.5],'브뤼셀':[50.845,4.352,14]};
+
+/* ───────── 지도 ───────── */
+const map=L.map('map',{zoomControl:false}).setView([51.6,4.4],8);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+ {maxZoom:20,attribution:'© OpenStreetMap © CARTO'}).addTo(map);
+L.control.zoom({position:'bottomright'}).addTo(map);
+
+function gURL(q){return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q);}
+function dURL(q){return 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(q);}
+
+const markers=[];
+P.forEach((p,idx)=>{
+  const [cat,name,la,lo,memo,gq]=p;
+  const cc=CAT[cat];
+  const icon=L.divIcon({className:'',html:
+    `<div class="pin" style="background:${cc.c}"><span>${cc.i}</span></div>`,
+    iconSize:[30,30],iconAnchor:[15,28],popupAnchor:[0,-26]});
+  const m=L.marker([la,lo],{icon}).addTo(map);
+  m.bindPopup(`<div class="pp">
+    <span class="badge" style="background:${cc.c}">${cc.i} ${cat} · ${CITY_OF(p)}</span>
+    <h3>${name}</h3>
+    <div class="memo">${memo}</div>
+    <div class="btns">
+      <a class="g" href="${gURL(gq)}" target="_blank">구글맵 열기</a>
+      <a class="d" href="${dURL(gq)}" target="_blank">길찾기</a>
+    </div></div>`);
+  markers.push({m,cat,name,memo,city:CITY_OF(p),idx});
+});
+
+/* ───────── 카테고리 칩 ───────── */
+const chipsEl=document.getElementById('chips');
+let activeCat=null;
+const allChip=document.createElement('button');
+allChip.className='chip on';allChip.style.background='#202124';allChip.style.color='#fff';
+allChip.textContent='전체';chipsEl.appendChild(allChip);
+allChip.onclick=()=>{activeCat=null;refreshChips();applyFilter();};
+const catChips={};
+Object.keys(CAT).forEach(k=>{
+  const b=document.createElement('button');b.className='chip';
+  b.innerHTML=`<span class="cdot" style="background:${CAT[k].c}"></span>${k} (${P.filter(p=>p[0]===k).length})`;
+  b.onclick=()=>{activeCat=activeCat===k?null:k;refreshChips();applyFilter();};
+  chipsEl.appendChild(b);catChips[k]=b;});
+function refreshChips(){
+  allChip.classList.toggle('on',!activeCat);
+  Object.keys(catChips).forEach(k=>{
+    const on=activeCat===k;
+    catChips[k].classList.toggle('on',on);
+    catChips[k].style.background=on?CAT[k].c:'#fff';
+    catChips[k].style.color=on?'#fff':'#3c4043';});}
+function applyFilter(){
+  markers.forEach(o=>{
+    const show=!activeCat||o.cat===activeCat;
+    if(show&&!map.hasLayer(o.m))o.m.addTo(map);
+    if(!show&&map.hasLayer(o.m))map.removeLayer(o.m);});
+  buildSheet();}
+
+/* ───────── 도시 점프 ───────── */
+const citiesEl=document.getElementById('cities');
+Object.keys(CITY_VIEW).forEach(c=>{
+  const n=P.filter(p=>CITY_OF(p)===c).length;
+  const b=document.createElement('button');b.className='cityjump';
+  b.innerHTML=`${c}<small>${n}곳</small>`;
+  b.onclick=()=>{const v=CITY_VIEW[c];map.flyTo([v[0],v[1]],v[2],{duration:0.9});};
+  citiesEl.appendChild(b);});
+
+/* ───────── 검색 ───────── */
+const q=document.getElementById('q'),sg=document.getElementById('suggest'),
+      clearBtn=document.getElementById('clearBtn');
+q.addEventListener('input',()=>{
+  const v=q.value.trim().toLowerCase();
+  clearBtn.style.display=v?'block':'none';
+  if(!v){sg.style.display='none';return;}
+  const hits=markers.filter(o=>(o.name+o.memo+o.cat+o.city).toLowerCase().includes(v)).slice(0,8);
+  sg.innerHTML=hits.length?hits.map(o=>
+    `<div class="sg" data-i="${o.idx}">
+      <div class="dot" style="background:${CAT[o.cat].c}">${CAT[o.cat].i}</div>
+      <div><div class="nm">${o.name}</div><div class="ct">${o.city} · ${o.cat}</div></div>
+    </div>`).join(''):'<div class="sg"><div class="ct">검색 결과 없음</div></div>';
+  sg.style.display='block';
+  sg.querySelectorAll('.sg[data-i]').forEach(el=>el.onclick=()=>{
+    const o=markers[+el.dataset.i];
+    sg.style.display='none';q.value=o.name;
+    if(!map.hasLayer(o.m)){activeCat=null;refreshChips();applyFilter();}
+    map.flyTo(o.m.getLatLng(),16,{duration:0.9});
+    setTimeout(()=>o.m.openPopup(),950);});
+});
+clearBtn.onclick=()=>{q.value='';sg.style.display='none';clearBtn.style.display='none';};
+document.addEventListener('click',e=>{
+  if(!document.getElementById('topbar').contains(e.target))sg.style.display='none';});
+
+/* ───────── 목록 시트 ───────── */
+const sheet=document.getElementById('sheet'),listBtn=document.getElementById('listBtn'),
+      sheetList=document.getElementById('sheetList');
+function buildSheet(){
+  const vis=markers.filter(o=>!activeCat||o.cat===activeCat);
+  listBtn.textContent=`☰ ${activeCat||'전체'} 목록 (${vis.length})`;
+  let h='',last='';
+  ['암스테르담','델프트','로테르담','앤트워프','브뤼셀'].forEach(c=>{
+    const rows=vis.filter(o=>o.city===c);
+    if(!rows.length)return;
+    h+=`<div class="cityhead">📍 ${c} (${rows.length})</div>`;
+    rows.forEach(o=>{h+=`<div class="li" data-i="${o.idx}">
+      <div class="dot" style="background:${CAT[o.cat].c}">${CAT[o.cat].i}</div>
+      <div><div class="nm">${o.name}</div><div class="ds">${o.memo}</div></div></div>`;});
+  });
+  sheetList.innerHTML=h;
+  sheetList.querySelectorAll('.li').forEach(el=>el.onclick=()=>{
+    const o=markers[+el.dataset.i];
+    sheet.classList.remove('open');
+    map.flyTo(o.m.getLatLng(),16,{duration:0.9});
+    setTimeout(()=>o.m.openPopup(),950);});}
+buildSheet();
+listBtn.onclick=()=>sheet.classList.toggle('open');
+document.querySelector('#sheet .grab').onclick=()=>sheet.classList.remove('open');
+map.on('click',()=>sheet.classList.remove('open'));
+</script>
+</body>
+</html>
