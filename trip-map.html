@@ -98,14 +98,14 @@
 </div>
 <div id="chips"></div>
 <div id="cities"></div>
-<button id="listBtn">☰ 전체 목록 (52)</button>
+<button id="listBtn">☰ 전체 목록 (55)</button>
 <div id="sheet"><div class="grab"></div><h2>📍 전체 장소</h2><div id="sheetList"></div></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 /* ───────── 데이터: 분류, 이름, 위도, 경도, 메모, 구글검색어 ───────── */
 const CAT={
  명소:{c:'#d93025',i:'📷'}, 박물관:{c:'#7b1fa2',i:'🖼️'}, 맛집:{c:'#e8710a',i:'🍽️'},
- 호텔:{c:'#188038',i:'🏨'}, 교통:{c:'#1a73e8',i:'🚆'}};
+ 호텔:{c:'#188038',i:'🏨'}, 교통:{c:'#1a73e8',i:'🚆'}, ATM:{c:'#f9a825',i:'💶'}};
 const P=[
  // ── 암스테르담 ──
  ['교통','스키폴 공항',52.3105,4.7683,'6/24 14:00 도착 · 7/2 14:55 출발 (토론토 경유)','Schiphol Airport'],
@@ -118,6 +118,9 @@ const P=[
  ['명소','하이네켄 체험관',52.3578,4.8915,'6/30 14:00 예약완료 (2명 €49.90)','Heineken Experience Amsterdam'],
  ['명소','폰델파크',52.3580,4.8686,'7/1 날 좋으면 산책','Vondelpark Amsterdam'],
  ['교통','암스테르담 중앙역',52.3791,4.9003,'국내선 NS 허브 · 6/30 유로스타 도착역','Amsterdam Centraal Station'],
+ ['ATM','GeldMaat · 스키폴 공항',52.3091,4.7612,'노란 GeldMaat ATM (도착층 Schiphol Plaza) · 수수료 거의 없음 · 도착하자마자 €200~300 인출 추천. DCC 뜨면 EUR 선택!','GeldMaat Schiphol Plaza Airport'],
+ ['ATM','GeldMaat · 암스테르담 중앙역',52.3787,4.8999,'역 구내 노란 GeldMaat · 시내 도착하면 바로 인출 가능. Damrak 길거리 파란 Euronet은 피하기','Geldmaat Amsterdam Centraal Station'],
+ ['ATM','GeldMaat · Nieuwmarkt',52.3722,4.9003,'GeldMaat Store, Nieuwmarkt 20 · 매일 07:00~22:00 · 실내 여러 대 · 센트랄 도보 5~7분','Geldmaat Nieuwmarkt 20 Amsterdam'],
  ['맛집','Café de Klos',52.3645,4.8847,'립 맛집 · 6/24 저녁 후보','Cafe de Klos Kerkstraat 41 Amsterdam'],
  ['맛집','Moeders',52.3735,4.8758,'네덜란드 가정식 · 6/30 저녁 (예약 필요)','Moeders Rozengracht 251 Amsterdam'],
  ['맛집','Winkel 43',52.3796,4.8866,'유명 애플파이 · 7/1 요르단 산책 때','Winkel 43 Noordermarkt Amsterdam'],
