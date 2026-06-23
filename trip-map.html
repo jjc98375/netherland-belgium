@@ -12,6 +12,7 @@
 <link rel="apple-touch-icon" href="icon-192.png" />
 <link rel="icon" type="image/png" href="icon-192.png" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
 <style>
   :root{
     --sight:#d93025; --museum:#7b1fa2; --food:#e8710a; --hotel:#188038; --transit:#1a73e8;
@@ -45,6 +46,15 @@
     box-shadow:0 1px 3px rgba(0,0,0,.12);}
   .chip .cdot{width:9px;height:9px;border-radius:50%;}
   .chip.on{color:#fff;border-color:transparent;}
+  /* ── 길찾기 토스트 / 경로 지우기 ── */
+  #toast{position:fixed;top:118px;left:50%;transform:translateX(-50%);z-index:1200;background:#202124;color:#fff;
+    padding:10px 18px;border-radius:20px;font-size:13.5px;font-weight:600;box-shadow:0 3px 12px rgba(0,0,0,.35);
+    display:none;max-width:90vw;text-align:center;}
+  #routeClear{position:fixed;top:110px;right:10px;z-index:1100;background:#fff;color:#d93025;border:1px solid #f3c2bd;
+    border-radius:18px;padding:8px 14px;font-size:13px;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.2);cursor:pointer;display:none;}
+  .me{width:16px;height:16px;border-radius:50%;background:#1a73e8;border:3px solid #fff;
+    box-shadow:0 0 0 2px #1a73e8,0 2px 6px rgba(0,0,0,.4);}
+  .leaflet-routing-container{display:none;}
   /* ── 도시 점프 ── */
   #cities{position:fixed;bottom:88px;left:10px;z-index:999;display:flex;flex-direction:column;gap:6px;}
   .cityjump{background:#fff;border:none;border-radius:10px;padding:8px 12px;font-size:12.5px;
@@ -75,10 +85,10 @@
   .pp h3{margin:6px 0 3px;font-size:16.5px;color:#202124;}
   .pp .memo{font-size:13px;color:#5f6368;line-height:1.5;margin-bottom:10px;}
   .pp .btns{display:flex;gap:8px;}
-  .pp a{flex:1;text-align:center;text-decoration:none;font-size:13px;font-weight:700;
-    border-radius:18px;padding:9px 0;}
+  .pp a,.pp button{flex:1;text-align:center;text-decoration:none;font-size:13px;font-weight:700;
+    border-radius:18px;padding:9px 0;border:none;cursor:pointer;}
   .pp a.g{background:#1a73e8;color:#fff;}
-  .pp a.d{background:#e8f0fe;color:#1a73e8;}
+  .pp button.d{background:#e8f0fe;color:#1a73e8;}
   /* 마커 핀 */
   .pin{position:relative;width:30px;height:30px;border-radius:50% 50% 50% 0;
     transform:rotate(-45deg);border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4);
@@ -97,10 +107,13 @@
   <div id="suggest"></div>
 </div>
 <div id="chips"></div>
+<div id="toast"></div>
+<button id="routeClear" onclick="clearRoute()">✕ 경로 지우기</button>
 <div id="cities"></div>
-<button id="listBtn">☰ 전체 목록 (55)</button>
+<button id="listBtn">☰ 전체 목록 (56)</button>
 <div id="sheet"><div class="grab"></div><h2>📍 전체 장소</h2><div id="sheetList"></div></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 <script>
 /* ───────── 데이터: 분류, 이름, 위도, 경도, 메모, 구글검색어 ───────── */
 const CAT={
@@ -148,7 +161,8 @@ const P=[
  ['명소','그랑 사블롱 광장',50.8400,4.3565,'6/28 점심 + 성당 + 공원','Place du Grand Sablon Brussels'],
  ['명소','오줌싸개 동상',50.8450,4.3499,'6/28 오후 · 브뤼셀의 작은 명물','Manneken Pis Brussels'],
  ['명소','Rue des Bouchers',50.8482,4.3540,'6/28 저녁 음식거리','Rue des Bouchers Brussels'],
- ['교통','브뤼셀 Midi역',50.8354,4.3367,'유로스타역 · 6/26 도착 · 6/30 09:53 출발','Brussels Midi Station'],
+ ['교통','브뤼셀 Midi/Zuid역',50.8354,4.3367,'⭐국제선 유로스타 전용역 (여기로만 도착·출발) · 6/26 도착 · 6/30 09:53 출발 · 호텔서 지하철 5분','Brussels Midi Station'],
+ ['교통','브뤼셀 중앙역 (Central)',50.8454,4.3567,'🚆앤트워프 당일치기는 여기서 탑승 (호텔/그랑플라스 도보 3분, 제일 가까움) · 6/27·6/29 · IC가 Midi→Central→Nord 순으로 정차','Brussels Central Station Gare Centrale'],
  ['맛집','Chez Léon',50.8480,4.3537,'홍합 물프리트 · 6/26 저녁 후보','Chez Leon Rue des Bouchers Brussels'],
  ['맛집','Wittamer',50.8399,4.3568,'유명 파티스리 · 6/28 사블롱','Wittamer Place du Grand Sablon Brussels'],
  ['맛집','Maison Dandoy',50.8473,4.3513,'1829년 와플 명가 · 그랑플라스 도보 2분','Maison Dandoy Rue au Beurre Brussels'],
@@ -182,7 +196,34 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r
 L.control.zoom({position:'bottomright'}).addTo(map);
 
 function gURL(q){return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q);}
-function dURL(q){return 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(q);}
+
+/* ───────── 길찾기 (OpenStreetMap 도보 경로) ───────── */
+let routeCtrl=null, toastT=null;
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';
+  clearTimeout(toastT);toastT=setTimeout(()=>t.style.display='none',3800);}
+function clearRoute(){if(routeCtrl){map.removeControl(routeCtrl);routeCtrl=null;}
+  document.getElementById('routeClear').style.display='none';}
+function routeTo(la,lo){
+  map.closePopup();
+  if(!navigator.geolocation){toast('이 기기는 위치를 지원하지 않아요');return;}
+  toast('현재 위치 확인 중…');
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const from=L.latLng(pos.coords.latitude,pos.coords.longitude), to=L.latLng(la,lo);
+    if(routeCtrl)map.removeControl(routeCtrl);
+    routeCtrl=L.Routing.control({
+      waypoints:[from,to],
+      router:L.Routing.osrmv1({serviceUrl:'https://routing.openstreetmap.de/routed-foot/route/v1'}),
+      lineOptions:{styles:[{color:'#1a73e8',weight:6,opacity:.85}]},
+      createMarker:(i,wp)=> i===0 ? L.marker(wp.latLng,{icon:L.divIcon({className:'',html:'<div class="me"></div>',iconSize:[18,18],iconAnchor:[9,9]})}) : null,
+      addWaypoints:false, draggableWaypoints:false, fitSelectedRoutes:true, show:false, collapsible:true
+    }).addTo(map);
+    routeCtrl.on('routesfound',e=>{const s=e.routes[0].summary;
+      toast('🚶 '+(s.totalDistance/1000).toFixed(1)+'km · 약 '+Math.round(s.totalTime/60)+'분 (도보)');
+      document.getElementById('routeClear').style.display='block';});
+    routeCtrl.on('routingerror',()=>toast('경로를 못 찾았어요. 인터넷 확인해줘 😢'));
+  }, err=>{toast('위치 권한을 켜줘야 길찾기가 돼요');},
+  {enableHighAccuracy:true,timeout:12000,maximumAge:30000});
+}
 
 const markers=[];
 P.forEach((p,idx)=>{
@@ -197,35 +238,36 @@ P.forEach((p,idx)=>{
     <h3>${name}</h3>
     <div class="memo">${memo}</div>
     <div class="btns">
-      <a class="g" href="${gURL(gq)}" target="_blank">구글맵 열기</a>
-      <a class="d" href="${dURL(gq)}" target="_blank">길찾기</a>
+      <a class="g" href="${gURL(gq)}" target="_blank">구글맵</a>
+      <button class="d" onclick="routeTo(${la},${lo})">🚶 길찾기</button>
     </div></div>`);
   markers.push({m,cat,name,memo,city:CITY_OF(p),idx});
 });
 
 /* ───────── 카테고리 칩 ───────── */
 const chipsEl=document.getElementById('chips');
-let activeCat=null;
+let activeCats=new Set();   // 비어있으면 = 전체
+function isShown(cat){return activeCats.size===0||activeCats.has(cat);}
 const allChip=document.createElement('button');
 allChip.className='chip on';allChip.style.background='#202124';allChip.style.color='#fff';
 allChip.textContent='전체';chipsEl.appendChild(allChip);
-allChip.onclick=()=>{activeCat=null;refreshChips();applyFilter();};
+allChip.onclick=()=>{activeCats.clear();refreshChips();applyFilter();};
 const catChips={};
 Object.keys(CAT).forEach(k=>{
   const b=document.createElement('button');b.className='chip';
   b.innerHTML=`<span class="cdot" style="background:${CAT[k].c}"></span>${k} (${P.filter(p=>p[0]===k).length})`;
-  b.onclick=()=>{activeCat=activeCat===k?null:k;refreshChips();applyFilter();};
+  b.onclick=()=>{activeCats.has(k)?activeCats.delete(k):activeCats.add(k);refreshChips();applyFilter();};
   chipsEl.appendChild(b);catChips[k]=b;});
 function refreshChips(){
-  allChip.classList.toggle('on',!activeCat);
+  allChip.classList.toggle('on',activeCats.size===0);
   Object.keys(catChips).forEach(k=>{
-    const on=activeCat===k;
+    const on=activeCats.has(k);
     catChips[k].classList.toggle('on',on);
     catChips[k].style.background=on?CAT[k].c:'#fff';
     catChips[k].style.color=on?'#fff':'#3c4043';});}
 function applyFilter(){
   markers.forEach(o=>{
-    const show=!activeCat||o.cat===activeCat;
+    const show=isShown(o.cat);
     if(show&&!map.hasLayer(o.m))o.m.addTo(map);
     if(!show&&map.hasLayer(o.m))map.removeLayer(o.m);});
   buildSheet();}
@@ -256,7 +298,7 @@ q.addEventListener('input',()=>{
   sg.querySelectorAll('.sg[data-i]').forEach(el=>el.onclick=()=>{
     const o=markers[+el.dataset.i];
     sg.style.display='none';q.value=o.name;
-    if(!map.hasLayer(o.m)){activeCat=null;refreshChips();applyFilter();}
+    if(!isShown(o.cat)){activeCats.clear();refreshChips();applyFilter();}
     map.flyTo(o.m.getLatLng(),16,{duration:0.9});
     setTimeout(()=>o.m.openPopup(),950);});
 });
@@ -268,9 +310,10 @@ document.addEventListener('click',e=>{
 const sheet=document.getElementById('sheet'),listBtn=document.getElementById('listBtn'),
       sheetList=document.getElementById('sheetList');
 function buildSheet(){
-  const vis=markers.filter(o=>!activeCat||o.cat===activeCat);
-  listBtn.textContent=`☰ ${activeCat||'전체'} 목록 (${vis.length})`;
-  let h='',last='';
+  const vis=markers.filter(o=>isShown(o.cat));
+  const label=activeCats.size===0?'전체':Array.from(activeCats).join('·');
+  listBtn.textContent=`☰ ${label} 목록 (${vis.length})`;
+  let h='';
   ['암스테르담','델프트','로테르담','앤트워프','브뤼셀'].forEach(c=>{
     const rows=vis.filter(o=>o.city===c);
     if(!rows.length)return;
