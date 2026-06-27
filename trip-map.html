@@ -110,7 +110,7 @@
 <div id="toast"></div>
 <button id="routeClear" onclick="clearRoute()">✕ 경로 지우기</button>
 <div id="cities"></div>
-<button id="listBtn">☰ 전체 목록 (56)</button>
+<button id="listBtn">☰ 전체 목록 (60)</button>
 <div id="sheet"><div class="grab"></div><h2>📍 전체 장소</h2><div id="sheetList"></div></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
@@ -118,7 +118,7 @@
 /* ───────── 데이터: 분류, 이름, 위도, 경도, 메모, 구글검색어 ───────── */
 const CAT={
  명소:{c:'#d93025',i:'📷'}, 박물관:{c:'#7b1fa2',i:'🖼️'}, 맛집:{c:'#e8710a',i:'🍽️'},
- 호텔:{c:'#188038',i:'🏨'}, 교통:{c:'#1a73e8',i:'🚆'}, ATM:{c:'#f9a825',i:'💶'}};
+ 호텔:{c:'#188038',i:'🏨'}, 교통:{c:'#1a73e8',i:'🚆'}, ATM:{c:'#f9a825',i:'💶'}, 아르누보:{c:'#00897b',i:'🏛️'}};
 const P=[
  // ── 암스테르담 ──
  ['교통','스키폴 공항',52.3105,4.7683,'6/24 14:00 도착 · 7/2 14:55 출발 (토론토 경유)','Schiphol Airport'],
@@ -157,7 +157,7 @@ const P=[
  ['명소','그랑플라스',50.8467,4.3525,'6/26 오후 + 야경 · 호텔 도보 2분','Grand Place Brussels'],
  ['명소','갈르리 생튀베르',50.8479,4.3551,'6/26 예쁜 아케이드','Galeries Royales Saint-Hubert Brussels'],
  ['호텔','easyHotel Brussels',50.8464,4.3545,'6/26–6/30 (4박) 예약완료 · 체크인 15:00','easyHotel Brussels City Centre Grasmarkt 100'],
- ['박물관','마그리트 미술관',50.8420,4.3596,'6/28 11:00 · 엄마 픽 · 일요일 영업','Magritte Museum Brussels'],
+ ['박물관','마그리트 미술관',50.8420,4.3596,'6/28 11:00 오전(예약완료) · 엄마 픽 · 오후 아르누보 투어로 연결','Magritte Museum Brussels'],
  ['명소','그랑 사블롱 광장',50.8400,4.3565,'6/28 점심 + 성당 + 공원','Place du Grand Sablon Brussels'],
  ['명소','오줌싸개 동상',50.8450,4.3499,'6/28 오후 · 브뤼셀의 작은 명물','Manneken Pis Brussels'],
  ['명소','Rue des Bouchers',50.8482,4.3540,'6/28 저녁 음식거리','Rue des Bouchers Brussels'],
@@ -169,6 +169,10 @@ const P=[
  ['맛집','Fritland',50.8474,4.3500,'1987년부터 감자튀김 · 야경 후 야식 가능','Fritland Brussels'],
  ['맛집','Noordzee 해산물 노점',50.8501,4.3460,'서서 먹는 해산물 바 · 새우 크로켓 + 화이트와인','Noordzee Mer du Nord Brussels'],
  ['맛집','Pierre Marcolini',50.8395,4.3562,'사블롱 초콜릿 명가 · 선물용 최고','Pierre Marcolini Grand Sablon Brussels'],
+ ['아르누보','오르타 박물관',50.8273,4.3578,'6/28 오후 ★핵심 · 오르타 본인 집 내부관람 · 일 11:00–17:30(월 휴관) · 시간지정 예약 필수','Horta Museum Brussels'],
+ ['아르누보','오텔 타셀',50.8311,4.3622,'6/28 · 세계 최초 본격 아르누보(1893) · 개인주택이라 외관만','Hotel Tassel Brussels'],
+ ['아르누보','오텔 솔베이',50.8245,4.3667,'6/28 · 오르타 최고 걸작 · 한 달 5일만 개방(예약) · 사실상 외관만','Hotel Solvay Avenue Louise Brussels'],
+ ['아르누보','오텔 반 에트벨데',50.8460,4.3782,'6/28 옵션 · 유리돔 · 내부관람 토·일·월 10–17시 €12 · EU지구(위치 별도)','Hotel van Eetvelde Brussels'],
  // ── 앤트워프 ──
  ['박물관','마이어 판 델 베르흐',51.2150,4.4030,'6/27 오전 · 브뤼헐 둘레 흐릿 · 월 휴관이라 토요일에!','Museum Mayer van den Bergh Antwerp'],
  ['박물관','MoMu 패션 박물관',51.2152,4.3984,'6/27 오전 · 월 휴관','MoMu Antwerp'],
